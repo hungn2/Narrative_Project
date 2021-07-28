@@ -1,0 +1,202 @@
+<html>
+<script src='https://d3js.org/d3.v5.min.js'></script>
+<script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
+<style>
+    div.tooltip {
+        position: absolute;
+        text-align: center;
+        height: 20px;
+        padding: 2px;
+        font: 12px sans-serif;
+        background: lightsteelblue;
+        border: 0px;
+        border-radius: 8px;
+        pointer-events: none;
+    }
+
+    rect:hover {
+        fill: lightblue;
+    }
+</style>
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+    integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+<body onload='init()'>
+    <h1>Netflix Originals as of June 1st, 2021</h1>
+    <p id="filters"></p>
+    <h2 id="title">Films Categorized by IMBD Score</h2>
+    <svg width=1000 height=550>
+    </svg>
+    <div id="footer">
+        <p>Hover over a bar to see the exact number of films associated with category.</p>
+        <p>Click on a bar to filter on that category and drill down further.</p>
+        <p>Data obtained from &lt<a
+                href="https://www.kaggle.com/luiscorter/netflix-original-films-imdb-scores">https://www.kaggle.com/luiscorter/netflix-original-films-imdb-scores</a>&gt
+        </p>
+    </div>
+    <script>
+        async function init() {
+            var paths = window.location.pathname.split("/");
+            var langFilter = paths[paths.length - 3];
+            var genreFilter = paths[paths.length - 2];
+
+            d3.select("#filters").html("Filters: <a href=\"../../index.html\">All</a> > <a href=\"../index.html\">" + langFilter + "</a> > <a href =\"\">" + genreFilter + "</a>");
+
+            data = await d3.csv("https://hungn2.github.io/NetflixOriginals/NetflixOriginals.csv");
+
+            // Define the div for the tooltip
+            var div = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
+
+            var countObj = {
+                "0 - 5.9": 0,
+                "6.0 - 7.9": 0,
+                "8.0 - 10.0": 0,
+            };
+
+            data.forEach(function (d) {
+                var genre = d.Genre;
+                var language = d.Language;
+                var score = d["IMDB Score"];
+
+                if (!language.includes("English") && !language.includes("Hindi") && !language.includes("Spanish") && genre.includes(genreFilter)) {
+                    if (score < 6.0) {
+                        countObj["0 - 5.9"] = countObj["0 - 5.9"] + 1
+                    } if (score >= 6.0 && score < 8.0) {
+                        countObj["6.0 - 7.9"] = countObj["6.0 - 7.9"] + 1
+                    } if (score >= 8.0 && score <= 10.0) {
+                        countObj["8.0 - 10.0"] = countObj["8.0 - 10.0"] + 1
+                    }
+                }
+            });
+
+            countScores = d3.map(countObj);
+
+            xdomain = [0, 1, 2];
+            xrange = [0, 450];
+            ydomain = [0, Math.max(...countScores.values())];
+            yrange = [450, 0];
+
+            xs = d3.scaleBand().domain(xdomain).range(xrange);
+            ys = d3.scaleLinear().domain(ydomain).range(yrange);
+
+            let tickLabels = ["0 - 5.9", "6.0 - 7.9", "8.0 - 10.0"];
+
+            d3.select("svg")
+                .append("g")
+                .attr("transform", "translate(50,50)")
+                .selectAll("a").data(countScores.values()).enter().append("a")
+                .append("rect")
+                .attr("x", function (d, i) { return xs(i); })
+                .attr("y", function (d) { return (ys(d)); })
+                .attr("height", function (d) { return 450 - ys(d); })
+                .attr("width", xs.bandwidth())
+                .attr("fill", "blue")
+                .attr("stroke", "black")
+                .on("mouseover", function (d, i) {
+                    div.style("opacity", 1)
+                        .style("left", (d3.event.pageX) + "px")
+                        .style("top", (d3.event.pageY) + "px")
+                        .html(tickLabels[i] + " contains " + d + " films.");
+                })
+                .on("mouseout", function (d, i) {
+                    div.style("opacity", 0);
+                })
+                .on("click", function (d, i) {
+                    d3.select("svg").remove();
+                    div.style("opacity", 0);
+                    d3.select("#title").html("List of Films Filtered as Above:");
+                    d3.select("#footer").remove();
+                    var filters = d3.select("#filters").html();
+                    d3.select("#filters").html(filters + " > IMDB Score: " + tickLabels[i]);
+
+                    tabulate(data, ['Title', 'Genre', 'Premiere', 'Runtime', 'IMDB Score', 'Language'], tickLabels[i]);
+                });
+
+            function tabulate(data, columns, scoreFilter) {
+                var table = d3.select('body').append('table').attr("class", "table")
+                var thead = table.append('thead')
+                var tbody = table.append('tbody');
+
+                // append the header row
+                thead.append('tr')
+                    .selectAll('th')
+                    .data(columns).enter()
+                    .append('th')
+                    .text(function (column) { return column; });
+
+                // create a row for each object in the data
+                var rows = tbody.selectAll('tr')
+                    .data(data)
+                    .enter()
+                    .append('tr')
+                    .filter(function (d) {
+                        if (scoreFilter == "0 - 5.9") {
+                            return (!d.Language.includes("English") && !d.Language.includes("Hindi") && !d.Language.includes("Spanish") && d.Genre.includes(genreFilter) && d["IMDB Score"] < 6.0);
+                        } else if (scoreFilter == "6.0 - 7.9") {
+                            return (!d.Language.includes("English") && !d.Language.includes("Hindi") && !d.Language.includes("Spanish") && d["IMDB Score"] >= 6.0 && d["IMDB Score"] < 8.0);
+                        } else {
+                            return (!d.Language.includes("English") && !d.Language.includes("Hindi") && !d.Language.includes("Spanish") && d["IMDB Score"] >= 8.0);
+                        }
+                    });
+
+                // create a cell in each row for each column
+                var cells = rows.selectAll('td')
+                    .data(function (row) {
+                        return columns.map(function (column) {
+                            if (column == "Title") {
+                                return { column: column, value: "<a href=\"https://www.imdb.com/find?q=" + row[column] + "\">" + row[column] + "</a>" };
+                            } else {
+                                return { column: column, value: row[column] };
+                            }
+                        });
+                    })
+                    .enter()
+                    .append('td')
+                    .html(function (d) { return d.value; });
+
+                return table;
+            }
+
+            d3.select("svg")
+                .append("g")
+                .attr("transform", "translate(50,50)")
+                .call(d3.axisLeft(ys))
+
+
+            d3.select("svg")
+                .append("g")
+                .attr("transform", "translate(50,500)")
+                .call(d3.axisBottom(xs).tickFormat((d, i) => tickLabels[i]));
+
+            const annotations = [
+                {
+                    note: {
+                        label: "Many average documentaries exists in other languages.",
+                        title: countObj["6.0 - 7.9"],
+                        align: "left"
+                    },
+                    x: 300,
+                    y: 0,
+                    dy: 100,
+                    dx: 100,
+                    subject: { radius: 50, radiusPadding: 10 },
+                },
+            ];
+
+            const makeAnnotations = d3.annotation()
+                .type(d3.annotationLabel)
+                .annotations(annotations)
+
+            d3.select("svg")
+                .append("g")
+                .attr("transform", "translate(50,50)")
+                .attr("class", "annotation-group")
+                .call(makeAnnotations)
+        }
+    </script>
+</body>
+
+</html>

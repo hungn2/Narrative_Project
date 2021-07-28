@@ -24,8 +24,8 @@
 
 <body onload='init()'>
     <h1>Netflix Originals as of June 1st, 2021</h1>
-    <p id="filters">Filters: <a href="">All</a></p>
-    <h2 id="title">Films Categorized by Languages</h2>
+    <p id="filters"></a></p>
+    <h2 id="title">Films Categorized by Genres</h2>
     <svg width=1000 height=550>
     </svg>
     <div id="footer">
@@ -37,6 +37,10 @@
     </div>
     <script>
         async function init() {
+            var paths = window.location.pathname.split("/");
+            var langFilter = paths[paths.length - 2];
+
+            d3.select("#filters").html("Filters: <a href=\"../index.html\">All</a> > <a href=\"\">" + langFilter + "</a>");
 
             data = await d3.csv("https://hungn2.github.io/NetflixOriginals/NetflixOriginals.csv");
 
@@ -46,44 +50,47 @@
                 .style("opacity", 0);
 
             var countObj = {
-                "English": 0,
-                "Hindi": 0,
-                "Spanish": 0,
+                "Action": 0,
+                "Comedy": 0,
+                "Documentary": 0,
                 "Other": 0
             };
 
             data.forEach(function (d) {
-                var language = d.Language;
+                var genre = d.Genre;
+                var language = d.Language
 
-                if (language.includes("English") || language.includes("Hindi") || language.includes("Spanish")) {
-                    if (language.includes("English")) {
-                        countObj["English"] = countObj["English"] + 1
-                    } if (language.includes("Hindi")) {
-                        countObj["Hindi"] = countObj["Hindi"] + 1
-                    } if (language.includes("Spanish")) {
-                        countObj["Spanish"] = countObj["Spanish"] + 1
+                if (language.includes(langFilter)) {
+                    if (genre.includes("Action") || genre.includes("Comedy") || genre.includes("Documentary")) {
+                        if (genre.includes("Action")) {
+                            countObj["Action"] = countObj["Action"] + 1
+                        } if (genre.includes("Comedy")) {
+                            countObj["Comedy"] = countObj["Comedy"] + 1
+                        } if (genre.includes("Documentary")) {
+                            countObj["Documentary"] = countObj["Documentary"] + 1
+                        }
+                    } else {
+                        countObj["Other"] = countObj["Other"] + 1
                     }
-                } else {
-                    countObj["Other"] = countObj["Other"] + 1
                 }
             });
 
-            countLanguages = d3.map(countObj);
+            countGenres = d3.map(countObj);
 
             xdomain = [0, 1, 2, 3];
             xrange = [0, 450];
-            ydomain = [0, Math.max(...countLanguages.values())];
+            ydomain = [0, Math.max(...countGenres.values())];
             yrange = [450, 0];
 
             xs = d3.scaleBand().domain(xdomain).range(xrange);
             ys = d3.scaleLinear().domain(ydomain).range(yrange);
 
-            let tickLabels = ["English", "Hindi", "Spanish", "Other"];
+            let tickLabels = ["Action", "Comedy", "Documentary", "Other"];
 
             d3.select("svg")
                 .append("g")
                 .attr("transform", "translate(50,50)")
-                .selectAll("a").data(countLanguages.values()).enter().append("a")
+                .selectAll("a").data(countGenres.values()).enter().append("a")
                 .attr("xlink:href", function (d, i) { return tickLabels[i] + "/index.html"; })
                 .append("rect")
                 .attr("x", function (d, i) { return xs(i); })
@@ -113,17 +120,19 @@
                 .attr("transform", "translate(50,500)")
                 .call(d3.axisBottom(xs).tickFormat((d, i) => tickLabels[i]));
 
+            console.log(Math.max(...countGenres.values()))
+
             const annotations = [
                 {
                     note: {
-                        label: "Netflix Originals in English far exeeds any other language",
-                        title: countObj["English"],
-                        align: "left"
+                        label: "Documentaries are very popular in English!",
+                        title: countObj["Documentary"],
+                        align: "right"
                     },
-                    x: 112.5,
-                    y: 0,
-                    dy: 100,
-                    dx: 100,
+                    x: 225,
+                    y: 450 - (450 / Math.max(...countGenres.values())) * countObj["Documentary"],
+                    dy: -100,
+                    dx: -100,
                     subject: { radius: 50, radiusPadding: 10 },
                 },
             ];
