@@ -29,9 +29,11 @@
     <svg width=1000 height=550>
     </svg>
     <div id="footer">
-        <p>Hover over a bar to see the exact number of films associated with category.</p>
-        <p>Click on a bar to filter on that category and drill down further.</p>
-        <p>Data obtained from &lt<a
+        <p>
+        These charts show a visualization of the number of Netflix Originals as of June 1st, 2021.<br>
+        Hover over a bar to see the exact number of films associated with that category.<br>
+        Click on a bar to filter on that category and drill down further.<br>
+        Data obtained from &lt<a
                 href="https://www.kaggle.com/luiscorter/netflix-original-films-imdb-scores">https://www.kaggle.com/luiscorter/netflix-original-films-imdb-scores</a>&gt
         </p>
     </div>
@@ -86,6 +88,7 @@
             ys = d3.scaleLinear().domain(ydomain).range(yrange);
 
             let tickLabels = ["Action", "Comedy", "Documentary", "Other"];
+            let colors = ["blue","red","green","yellow"]
 
             d3.select("svg")
                 .append("g")
@@ -94,10 +97,10 @@
                 .attr("xlink:href", function (d, i) { return tickLabels[i] + "/index.html"; })
                 .append("rect")
                 .attr("x", function (d, i) { return xs(i); })
-                .attr("y", function (d) { return (ys(d)); })
-                .attr("height", function (d) { return 450 - ys(d); })
+                .attr("y", "450")
+                .attr("height", "0")
                 .attr("width", xs.bandwidth())
-                .attr("fill", "blue")
+                .attr("fill", function (d, i) { return colors[i]; })
                 .attr("stroke", "black")
                 .on("mouseover", function (d, i) {
                     div.style("opacity", 1)
@@ -107,7 +110,10 @@
                 })
                 .on("mouseout", function (d, i) {
                     div.style("opacity", 0);
-                });
+                })
+                .transition().duration(1000)
+                .attr("y", function (d) { return (ys(d)); })
+                .attr("height", function (d) { return 450 - ys(d); });
 
             d3.select("svg")
                 .append("g")
@@ -141,11 +147,13 @@
                 .type(d3.annotationLabel)
                 .annotations(annotations)
 
-            d3.select("svg")
-                .append("g")
-                .attr("transform", "translate(50,50)")
-                .attr("class", "annotation-group")
-                .call(makeAnnotations)
+            setTimeout(function() {
+                d3.select("svg")
+                    .append("g")
+                    .attr("transform", "translate(50,50)")
+                    .attr("class", "annotation-group")
+                    .call(makeAnnotations)
+            }, 1000)
         }
     </script>
 </body>
